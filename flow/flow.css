@@ -42,6 +42,10 @@ h1 { margin-bottom: 8px; color: var(--navy); font-size: clamp(27px, 5vw, 36px); 
 .avatar { display: grid; width: 40px; height: 40px; flex: 0 0 auto; place-items: center; border-radius: 13px; background: #e3f3fc; color: #247cb4; font-size: 13px; font-weight: 800; }
 .user-name { font-weight: 700; }
 .user-arrow { margin-left: auto; color: #95a7b5; font-size: 20px; }
+.login-form { margin-top: 20px; }
+.login-selected-user { margin: 0 0 16px; color: var(--navy); font-size: 15px; font-weight: 700; }
+.login-form input { width: 100%; min-height: 48px; padding: 11px 12px; border: 1px solid #d6e0e7; border-radius: 12px; background: #fff; color: var(--navy); font-size: 20px; letter-spacing: .3em; text-align: center; }
+.login-form .dialog-actions { margin-top: 17px; }
 .login-note { margin: 22px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
 .error-message { margin: 14px 0 0; color: #a13d39; font-size: 14px; line-height: 1.5; }
 

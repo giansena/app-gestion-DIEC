@@ -3,9 +3,15 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#263b4d" />
+    <meta name="theme-color" content="#2C3E50" />
     <meta name="description" content="Organiza las tareas de tu equipo con DIEC flow." />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="DIEC flow" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <title>DIEC flow</title>
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" href="./diec-flow.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
     <link rel="stylesheet" href="./flow.css" />
     <script src="./flow.js" defer></script>
   </head>
@@ -19,10 +25,20 @@
           </a>
           <p class="eyebrow">EL EQUIPO, EN MOVIMIENTO</p>
           <h1 id="login-title">¿Quién sos?</h1>
-          <p class="muted">Elegí tu usuario para entrar a tu espacio de trabajo.</p>
+          <p class="muted">Elegí tu usuario e ingresá tu PIN para continuar.</p>
           <div id="user-list" class="user-list" aria-label="Usuarios autorizados"></div>
+          <form id="login-form" class="login-form" hidden>
+            <p id="login-selected-user" class="login-selected-user"></p>
+            <label class="field-label" for="login-pin">PIN personal</label>
+            <input id="login-pin" name="pin" type="password" inputmode="numeric" pattern="[0-9]{4}" minlength="4" maxlength="4" autocomplete="one-time-code" aria-describedby="login-pin-help" required />
+            <p id="login-pin-help" class="field-help">Ingresá los 4 dígitos de tu PIN.</p>
+            <div class="dialog-actions">
+              <button id="login-cancel" class="secondary-button" type="button">Cambiar usuario</button>
+              <button id="login-submit" class="primary-button" type="submit">Ingresar</button>
+            </div>
+          </form>
           <p id="login-error" class="error-message" role="alert" hidden></p>
-          <p class="login-note">Tu sesión se conserva en este dispositivo hasta que cierres sesión.</p>
+          <p class="login-note">La sesión se cierra automáticamente después de 12 horas.</p>
         </div>
       </section>
 
@@ -104,7 +120,7 @@
             </div>
             <p id="board-error" class="error-message" role="alert" hidden></p>
           </section>
-          <p class="reminder-note"><span aria-hidden="true">◷</span> Recordatorios diarios a las 8:00 (notificación simulada en el servidor).</p>
+          <p class="reminder-note"><span aria-hidden="true">◷</span> Recordatorios diarios por email a las 8:00.</p>
         </div>
 
         <button id="add-task-button" class="fab" type="button" aria-label="Crear nueva tarea">+</button>

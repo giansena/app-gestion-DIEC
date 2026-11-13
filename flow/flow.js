@@ -1,18 +1,10 @@
-const SESSION_KEY = "diec-flow-user";
-const FALLBACK_USERS = [
-  "Pamela Pérez",
-  "Nataniel Goyechea",
-  "David Maglione",
-  "Alen García",
-  "Roberto Martin",
-  "DIEC SAS",
-];
 const COLORS = ["#dff2fc", "#e7f5ef", "#f0eafa", "#e8f1fc", "#edf1f4", "#e6eef7"];
 const $ = (selector) => document.querySelector(selector);
 
 const state = {
-  users: FALLBACK_USERS,
+  users: [],
   user: null,
+  pendingLoginName: null,
   tasks: [],
   clientWorks: [],
   notifications: [],
@@ -48,6 +40,7 @@ async function api(path, options = {}) {
     headers: { "Content-Type": "application/json", ...options.headers },
   });
   const result = await response.json().catch(() => ({}));
+  if (response.status === 401 && state.user) clearSessionState();
   if (!response.ok) throw new Error(result.error || "No se pudo completar la solicitud.");
   return result;
 }
@@ -69,7 +62,7 @@ function renderUsers() {
     arrow.setAttribute("aria-hidden", "true");
     arrow.textContent = "›";
     button.append(avatar, label, arrow);
-    button.addEventListener("click", () => startSession(name));
+    button.addEventListener("click", () => selectUser(name));
     return button;
   }));
 }
@@ -79,19 +72,50 @@ async function loadUsers() {
     const result = await api("/users");
     state.users = result.users;
     renderUsers();
-  } catch {
-    renderUsers();
-    showError($("#login-error"), "No se pudo conectar con el servidor. Comprobá que DIEC flow esté en ejecución e intentá de nuevo.");
+  } catch (error) {
+    console.error("No se pudo cargar la lista de usuarios:", error);
+    showError($("#login-error"), "No se pudo cargar la lista de usuarios. Comprobá la conexión e intentá de nuevo.");
   }
 }
 
-function startSession(name) {
-  try {
-    localStorage.setItem(SESSION_KEY, name);
-  } catch {
-    showError($("#login-error"), "No se pudo guardar tu sesión en este dispositivo. Revisá el almacenamiento del navegador.");
+function selectUser(name) {
+  state.pendingLoginName = name;
+  $("#login-selected-user").textContent = `Ingresar como ${name}`;
+  $("#login-form").hidden = false;
+  $("#user-list").hidden = true;
+  $("#login-error").hidden = true;
+  $("#login-pin").value = "";
+  $("#login-pin").focus();
+}
+
+async function startSession(event) {
+  event.preventDefault();
+  const name = state.pendingLoginName;
+  const pin = $("#login-pin").value;
+  if (!name || !/^\d{4}$/.test(pin)) {
+    showError($("#login-error"), "Ingresá el PIN personal de 4 dígitos.");
     return;
   }
+  const button = $("#login-submit");
+  button.disabled = true;
+  $("#login-error").hidden = true;
+  try {
+    const result = await api("/session/login", {
+      method: "POST",
+      body: JSON.stringify({ name, pin }),
+    });
+    state.pendingLoginName = null;
+    $("#login-form").reset();
+    openAuthenticatedSession(result.user);
+  } catch (error) {
+    showError($("#login-error"), error.message);
+    $("#login-pin").focus();
+  } finally {
+    button.disabled = false;
+  }
+}
+
+function openAuthenticatedSession(name) {
   state.user = name;
   state.view = "personal";
   state.status = "active";
@@ -112,13 +136,7 @@ function startSession(name) {
   notificationTimer = setInterval(() => void refreshNotifications(), 3000);
 }
 
-function endSession() {
-  try {
-    localStorage.removeItem(SESSION_KEY);
-  } catch {
-    showToast("No se pudo cerrar la sesión guardada en este navegador.", true);
-    return;
-  }
+function clearSessionState() {
   taskFetchVersion += 1;
   clearInterval(notificationTimer);
   notificationTimer = undefined;
@@ -129,10 +147,34 @@ function endSession() {
   state.busy = false;
   renderNotifications();
   appScreen.hidden = true;
+  $("#login-form").hidden = true;
+  $("#user-list").hidden = false;
+  state.pendingLoginName = null;
+  $("#login-pin").value = "";
   loginScreen.hidden = false;
   $("#user-list button")?.focus();
 }
 
+async function endSession() {
+  try {
+    await fetch("/api/session/logout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    });
+  } catch (error) {
+    console.error("No se pudo invalidar la sesión en el servidor:", error);
+  }
+  clearSessionState();
+}
+
+async function restoreSession() {
+  try {
+    const result = await api("/session");
+    openAuthenticatedSession(result.user);
+  } catch {
+    $("#user-list").hidden = false;
+  }
+}
 function setView(view) {
   state.view = view;
   state.tasks = [];
@@ -531,11 +573,7 @@ async function updateTaskStatus(task, button, status) {
       : status === "in_progress"
         ? "Tarea en proceso."
         : "Tarea pendiente.";
-    if (result.azureSync?.status === "pending") {
-      showToast(`${message} La sincronización con Azure SQL quedó pendiente.`, true);
-    } else {
-      showToast(message);
-    }
+    showToast(message);
   } catch (error) {
     showToast(error.message, true);
     await refreshTasks();
@@ -545,12 +583,10 @@ async function updateTaskStatus(task, button, status) {
 async function deleteTask(task, button) {
   button.disabled = true;
   try {
-    const result = await api(`/tasks/${encodeURIComponent(task.id)}`, { method: "DELETE" });
+    await api(`/tasks/${encodeURIComponent(task.id)}`, { method: "DELETE" });
     state.tasks = state.tasks.filter((item) => item.id !== task.id);
     renderTasks();
-    showToast(result.azureSync?.status === "delete_pending"
-      ? "Tarea eliminada. La sincronización con Azure SQL quedó pendiente."
-      : "Tarea eliminada.");
+    showToast("Tarea eliminada.");
   } catch (error) {
     showToast(error.message, true);
     await refreshTasks();
@@ -564,15 +600,10 @@ async function completeTask(task, button) {
   state.tasks = state.tasks.filter((item) => item.id !== task.id);
   renderTasks();
   try {
-    const result = await api(`/tasks/${encodeURIComponent(task.id)}/complete`, {
+    await api(`/tasks/${encodeURIComponent(task.id)}/complete`, {
       method: "PATCH",
-      body: JSON.stringify({ completedBy: state.user }),
     });
-    if (result.azureSync?.status !== "synced") {
-      showToast("Tarea completada. Sincronización con Azure SQL pendiente; el servidor volverá a intentarlo.", true);
-    } else {
-      showToast("¡Tarea completada!");
-    }
+    showToast("¡Tarea completada!");
     if (state.status === "completed") await refreshTasks();
   } catch (error) {
     showToast(error.message, true);
@@ -656,7 +687,6 @@ async function createTask(event) {
         recipients,
         dueDate: $("#due-date").value || null,
         clientWorkId: $("#client-work").value || null,
-        ...(!isEditing ? { createdBy: state.user } : { updatedBy: state.user }),
       }),
     });
     if (!isEditing) {
@@ -737,9 +767,7 @@ async function createClientWork(event) {
     renderClientWorks();
     form.reset();
     clientWorksDialog.close();
-    showToast(result.clientWork.azureSyncState === "pending"
-      ? "Cliente / obra agregada. La sincronización con Azure SQL quedó pendiente."
-      : "Cliente / obra agregado.");
+    showToast("Cliente / obra agregado.");
   } catch (error) {
     showError($("#client-works-error"), error.message);
   } finally {
@@ -751,12 +779,10 @@ async function deleteClientWork(clientWork, button) {
   button.disabled = true;
   $("#client-works-error").hidden = true;
   try {
-    const result = await api(`/client-works/${encodeURIComponent(clientWork.id)}`, { method: "DELETE" });
+    await api(`/client-works/${encodeURIComponent(clientWork.id)}`, { method: "DELETE" });
     state.clientWorks = state.clientWorks.filter((item) => item.id !== clientWork.id);
     renderClientWorks();
-    showToast(result.azureSync?.status === "delete_pending"
-      ? "Cliente / obra eliminado. La sincronización con Azure SQL quedó pendiente."
-      : "Cliente / obra eliminado.");
+    showToast("Cliente / obra eliminado.");
   } catch (error) {
     showError($("#client-works-error"), error.message);
   } finally {
@@ -764,7 +790,15 @@ async function deleteClientWork(clientWork, button) {
   }
 }
 
-$("#logout-button").addEventListener("click", endSession);
+$("#logout-button").addEventListener("click", () => void endSession());
+$("#login-form").addEventListener("submit", (event) => void startSession(event));
+$("#login-cancel").addEventListener("click", () => {
+  state.pendingLoginName = null;
+  $("#login-form").reset();
+  $("#login-form").hidden = true;
+  $("#user-list").hidden = false;
+  $("#login-error").hidden = true;
+});
 $("#personal-view").addEventListener("click", () => setView("personal"));
 $("#global-view").addEventListener("click", () => setView("global"));
 $("#active-tasks-button").addEventListener("click", () => setStatus("active"));
@@ -813,10 +847,8 @@ completionDialog.addEventListener("close", () => {
 
 renderUsers();
 void loadUsers();
-try {
-  const savedUser = localStorage.getItem(SESSION_KEY);
-  if (savedUser && FALLBACK_USERS.includes(savedUser)) startSession(savedUser);
-  else if (savedUser) localStorage.removeItem(SESSION_KEY);
-} catch {
-  showError($("#login-error"), "No se pudo recuperar la sesión guardada. Revisá el almacenamiento del navegador.");
+void restoreSession();
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("./sw.js")
+    .catch((error) => console.error("No se pudo registrar la aplicación instalable:", error));
 }

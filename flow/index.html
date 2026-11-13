@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#263b4d" />
+    <meta name="description" content="Organiza las tareas de tu equipo con DIEC flow." />
+    <title>DIEC flow</title>
+    <link rel="stylesheet" href="./flow.css" />
+    <script src="./flow.js" defer></script>
+  </head>
+  <body>
+    <main class="app-shell">
+      <section id="login-screen" class="login-screen" aria-labelledby="login-title">
+        <div class="login-card">
+          <a class="brand" href="./" aria-label="DIEC flow, inicio">
+            <span class="brand-mark" aria-hidden="true">D</span>
+            <span>DIEC <span class="brand-light">flow</span></span>
+          </a>
+          <p class="eyebrow">EL EQUIPO, EN MOVIMIENTO</p>
+          <h1 id="login-title">¿Quién sos?</h1>
+          <p class="muted">Elegí tu usuario para entrar a tu espacio de trabajo.</p>
+          <div id="user-list" class="user-list" aria-label="Usuarios autorizados"></div>
+          <p id="login-error" class="error-message" role="alert" hidden></p>
+          <p class="login-note">Tu sesión se conserva en este dispositivo hasta que cierres sesión.</p>
+        </div>
+      </section>
+
+      <section id="app-screen" class="app-screen" aria-label="Tablero de tareas" hidden>
+        <header class="topbar">
+          <a class="brand brand-inverse" href="./" aria-label="DIEC flow, inicio">
+            <span class="brand-mark" aria-hidden="true">D</span>
+            <span>DIEC <span class="brand-light">flow</span></span>
+          </a>
+          <div class="account">
+            <span id="header-avatar" class="avatar" aria-hidden="true"></span>
+            <span id="header-user" class="account-name"></span>
+            <button id="logout-button" class="logout-button" type="button">Salir</button>
+          </div>
+        </header>
+
+        <div class="content">
+          <div class="welcome-row">
+            <div>
+              <p class="eyebrow">TABLERO DE TAREAS</p>
+              <h1 id="welcome-title">Hola</h1>
+              <p class="muted">Revisá tus tareas asignadas, marcá las que completes o sumá nuevas.</p>
+            </div>
+            <div class="view-switch" role="group" aria-label="Filtrar tareas">
+              <button id="personal-view" class="view-button is-active" type="button" aria-pressed="true">Mis tareas</button>
+              <button id="global-view" class="view-button" type="button" aria-pressed="false">Todas</button>
+            </div>
+          </div>
+
+          <section class="task-section" aria-labelledby="tasks-title">
+            <div class="status-switch" role="group" aria-label="Filtrar por estado">
+              <button id="pending-status" class="status-button is-active" type="button" aria-pressed="true">Pendientes</button>
+              <button id="completed-status" class="status-button" type="button" aria-pressed="false">Completadas</button>
+            </div>
+            <div class="section-heading">
+              <div>
+                <h2 id="tasks-title">Pendientes</h2>
+                <p id="task-count" class="muted" aria-live="polite"></p>
+              </div>
+              <span class="section-icon" aria-hidden="true">✓</span>
+            </div>
+            <div id="loading" class="loading" role="status">Cargando tareas…</div>
+            <div id="task-list" class="task-list"></div>
+            <div id="empty-state" class="empty-state" hidden>
+              <span id="empty-icon" class="empty-icon" aria-hidden="true">✓</span>
+              <h3 id="empty-title">Todo al día</h3>
+              <p id="empty-description">No hay tareas pendientes en esta vista. ¡Buen trabajo!</p>
+            </div>
+            <p id="board-error" class="error-message" role="alert" hidden></p>
+          </section>
+          <p class="reminder-note"><span aria-hidden="true">◷</span> Recordatorios diarios a las 8:00 (notificación simulada en el servidor).</p>
+        </div>
+
+        <button id="add-task-button" class="fab" type="button" aria-label="Crear nueva tarea">+</button>
+      </section>
+    </main>
+
+    <dialog id="task-dialog" class="task-dialog" aria-labelledby="dialog-title">
+      <form id="task-form" class="task-form">
+        <div class="dialog-heading">
+          <div>
+            <p class="eyebrow">NUEVA TAREA</p>
+            <h2 id="dialog-title">¿Qué hay que hacer?</h2>
+          </div>
+          <button id="close-dialog" class="icon-button" type="button" aria-label="Cerrar formulario">×</button>
+        </div>
+
+        <label class="field-label" for="description">Descripción</label>
+        <textarea id="description" name="description" maxlength="1000" rows="4" placeholder="Ej. enviar presupuesto a Ecogas" required></textarea>
+        <p class="field-help">La fecha de creación se guarda automáticamente.</p>
+
+        <fieldset class="recipient-field">
+          <legend class="field-label">Asignar a <span>(podés elegir varias personas)</span></legend>
+          <div id="recipient-list" class="recipient-list"></div>
+        </fieldset>
+
+        <label class="field-label" for="due-date">Fecha de vencimiento <span>(opcional)</span></label>
+        <input id="due-date" name="dueDate" type="date" />
+
+        <p id="form-error" class="error-message" role="alert" hidden></p>
+        <div class="dialog-actions">
+          <button id="cancel-dialog" class="secondary-button" type="button">Cancelar</button>
+          <button id="save-task" class="primary-button" type="submit">Crear tarea</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="completion-dialog" class="task-dialog confirmation-dialog" aria-labelledby="completion-title" aria-describedby="completion-help">
+      <div class="confirmation-content">
+        <div class="dialog-heading">
+          <div>
+            <p class="eyebrow">CONFIRMAR ACCIÓN</p>
+            <h2 id="completion-title">¿Completar esta tarea?</h2>
+          </div>
+          <button id="close-completion" class="icon-button" type="button" aria-label="Cerrar confirmación">×</button>
+        </div>
+        <p id="completion-description" class="confirmation-task"></p>
+        <p id="completion-help" class="confirmation-help">Al confirmarlo, la tarea se marcará como terminada y dejará de aparecer entre los pendientes.</p>
+        <div class="dialog-actions">
+          <button id="cancel-completion" class="secondary-button" type="button">Seguir pendiente</button>
+          <button id="confirm-completion" class="primary-button" type="button">Sí, completar</button>
+        </div>
+      </div>
+    </dialog>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  </body>
+</html>

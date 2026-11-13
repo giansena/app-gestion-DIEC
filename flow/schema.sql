@@ -1,0 +1,9 @@
+CREATE TABLE dbo.CompletedTasks (
+    TaskId UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+    Description NVARCHAR(1000) NOT NULL,
+    Recipients NVARCHAR(500) NOT NULL,
+    CreatedAt DATETIMEOFFSET NOT NULL,
+    DueDate DATE NULL,
+    CompletedAt DATETIMEOFFSET NOT NULL,
+    CompletedBy NVARCHAR(100) NOT NULL
+);

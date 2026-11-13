@@ -1,0 +1,17 @@
+{
+  "name": "diec-flow",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server.mjs"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "mssql": "^11.0.1",
+    "node-cron": "^4.6.0"
+  }
+}

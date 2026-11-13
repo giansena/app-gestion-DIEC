@@ -322,13 +322,16 @@ function renderTasks() {
     } else {
       const statusControl = document.createElement("div");
       statusControl.className = "task-status-control";
-      const statusBadge = document.createElement("span");
-      statusBadge.className = `task-status-badge${task.status === "in_progress" ? " is-in-progress" : ""}`;
-      statusBadge.textContent = task.status === "in_progress" ? "En proceso" : "Pendiente";
+      if (task.status === "in_progress") {
+        const statusBadge = document.createElement("span");
+        statusBadge.className = "task-status-badge is-in-progress";
+        statusBadge.textContent = "En proceso";
+        statusControl.append(statusBadge);
+      }
       const statusToggle = document.createElement("button");
       statusToggle.type = "button";
-      statusToggle.className = "task-status-toggle";
-      const nextStatusLabel = task.status === "in_progress" ? "Cambiar a Pendiente" : "Pasar a En proceso";
+      statusToggle.className = `task-status-toggle${task.status === "pending" ? " is-start-action" : ""}`;
+      const nextStatusLabel = task.status === "in_progress" ? "Cambiar a Pendiente" : "Empezar";
       statusToggle.textContent = nextStatusLabel;
       statusToggle.setAttribute("aria-label", `${nextStatusLabel}: ${task.description}`);
       statusToggle.addEventListener("click", () => requestTaskAction(
@@ -336,8 +339,10 @@ function renderTasks() {
         statusToggle,
         task.status === "in_progress" ? "pending" : "in_progress",
       ));
-      statusControl.append(statusBadge, statusToggle);
-      card.append(statusControl);
+      statusControl.append(statusToggle);
+      const primaryActions = document.createElement("div");
+      primaryActions.className = "task-primary-actions";
+      primaryActions.append(statusControl);
 
       const complete = document.createElement("button");
       complete.type = "button";
@@ -351,7 +356,11 @@ function renderTasks() {
       complete.append(completeIcon, completeLabel);
       complete.setAttribute("aria-label", `Marcar como terminada: ${task.description}`);
       complete.addEventListener("click", () => requestTaskAction(task, complete, "completed"));
-      card.append(complete, createTaskEditButton(task), createTaskDeleteButton(task));
+      primaryActions.append(complete);
+      const secondaryActions = document.createElement("div");
+      secondaryActions.className = "task-secondary-actions";
+      secondaryActions.append(createTaskEditButton(task), createTaskDeleteButton(task));
+      card.append(primaryActions, secondaryActions);
     }
 
     const body = document.createElement("div");
@@ -727,6 +736,7 @@ async function createClientWork(event) {
     state.clientWorks.push(result.clientWork);
     renderClientWorks();
     form.reset();
+    clientWorksDialog.close();
     showToast(result.clientWork.azureSyncState === "pending"
       ? "Cliente / obra agregada. La sincronización con Azure SQL quedó pendiente."
       : "Cliente / obra agregado.");

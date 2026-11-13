@@ -35,6 +35,13 @@
           <div class="account">
             <span id="header-avatar" class="avatar" aria-hidden="true"></span>
             <span id="header-user" class="account-name"></span>
+            <button id="notifications-button" class="notifications-button" type="button" aria-label="Abrir notificaciones" aria-haspopup="dialog">
+              <svg class="notification-bell" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" />
+              </svg>
+              <span class="notification-button-label">Avisos</span>
+              <span id="notification-count" class="notification-count" hidden>0</span>
+            </button>
             <button id="logout-button" class="logout-button" type="button">Salir</button>
           </div>
         </header>
@@ -46,30 +53,54 @@
               <h1 id="welcome-title">Hola</h1>
               <p class="muted">Revisá tus tareas asignadas, marcá las que completes o sumá nuevas.</p>
             </div>
-            <div class="view-switch" role="group" aria-label="Filtrar tareas">
-              <button id="personal-view" class="view-button is-active" type="button" aria-pressed="true">Mis tareas</button>
-              <button id="global-view" class="view-button" type="button" aria-pressed="false">Todas</button>
+            <div class="welcome-actions">
+              <div class="view-switch" role="group" aria-label="Filtrar tareas">
+                <button id="personal-view" class="view-button is-active" type="button" aria-pressed="true">Mis tareas</button>
+                <button id="global-view" class="view-button" type="button" aria-pressed="false">Todas</button>
+              </div>
+              <button id="client-works-button" class="secondary-button client-works-button" type="button" aria-label="Agregar cliente u obra">+ Cliente / Obra</button>
             </div>
           </div>
 
           <section class="task-section" aria-labelledby="tasks-title">
-            <div class="status-switch" role="group" aria-label="Filtrar por estado">
-              <button id="pending-status" class="status-button is-active" type="button" aria-pressed="true">Pendientes</button>
-              <button id="completed-status" class="status-button" type="button" aria-pressed="false">Completadas</button>
-            </div>
             <div class="section-heading">
               <div>
-                <h2 id="tasks-title">Pendientes</h2>
+                <h2 id="tasks-title">Tareas activas</h2>
                 <p id="task-count" class="muted" aria-live="polite"></p>
               </div>
               <span class="section-icon" aria-hidden="true">✓</span>
             </div>
             <div id="loading" class="loading" role="status">Cargando tareas…</div>
-            <div id="task-list" class="task-list"></div>
+            <div id="active-task-groups" class="active-task-groups" hidden>
+              <section class="task-subsection" aria-labelledby="pending-tasks-title">
+                <div class="task-subsection-heading">
+                  <h3 id="pending-tasks-title">Pendientes</h3>
+                  <span id="pending-task-count" class="subsection-count"></span>
+                </div>
+                <div id="pending-task-list" class="task-list"></div>
+                <p id="pending-task-empty" class="task-subsection-empty" hidden>No hay tareas pendientes.</p>
+              </section>
+              <section class="task-subsection" aria-labelledby="in-progress-tasks-title">
+                <div class="task-subsection-heading">
+                  <h3 id="in-progress-tasks-title">En proceso</h3>
+                  <span id="in-progress-task-count" class="subsection-count"></span>
+                </div>
+                <div id="in-progress-task-list" class="task-list"></div>
+                <p id="in-progress-task-empty" class="task-subsection-empty" hidden>No hay tareas en proceso.</p>
+              </section>
+            </div>
+            <div id="task-list" class="task-list" hidden></div>
             <div id="empty-state" class="empty-state" hidden>
               <span id="empty-icon" class="empty-icon" aria-hidden="true">✓</span>
               <h3 id="empty-title">Todo al día</h3>
               <p id="empty-description">No hay tareas pendientes en esta vista. ¡Buen trabajo!</p>
+            </div>
+            <div id="active-board-footer" class="board-navigation">
+              <p>¿Buscás una tarea que ya terminaste?</p>
+              <button id="completed-tasks-button" class="history-link" type="button">Ver tareas completadas <span aria-hidden="true">→</span></button>
+            </div>
+            <div id="completed-board-footer" class="board-navigation" hidden>
+              <button id="active-tasks-button" class="history-link" type="button"><span aria-hidden="true">←</span> Volver a tareas activas</button>
             </div>
             <p id="board-error" class="error-message" role="alert" hidden></p>
           </section>
@@ -84,7 +115,7 @@
       <form id="task-form" class="task-form">
         <div class="dialog-heading">
           <div>
-            <p class="eyebrow">NUEVA TAREA</p>
+            <p id="dialog-eyebrow" class="eyebrow">NUEVA TAREA</p>
             <h2 id="dialog-title">¿Qué hay que hacer?</h2>
           </div>
           <button id="close-dialog" class="icon-button" type="button" aria-label="Cerrar formulario">×</button>
@@ -93,6 +124,11 @@
         <label class="field-label" for="description">Descripción</label>
         <textarea id="description" name="description" maxlength="1000" rows="4" placeholder="Ej. enviar presupuesto a Ecogas" required></textarea>
         <p class="field-help">La fecha de creación se guarda automáticamente.</p>
+
+        <label class="field-label" for="client-work">Cliente / Obra <span>(opcional)</span></label>
+        <select id="client-work" name="clientWorkId">
+          <option value="">Sin cliente / obra</option>
+        </select>
 
         <fieldset class="recipient-field">
           <legend class="field-label">Asignar a <span>(podés elegir varias personas)</span></legend>
@@ -110,6 +146,31 @@
       </form>
     </dialog>
 
+    <dialog id="client-works-dialog" class="task-dialog client-works-dialog" aria-labelledby="client-works-title">
+      <div class="client-works-content">
+        <div class="dialog-heading">
+          <div>
+            <p class="eyebrow">ORGANIZACIÓN</p>
+            <h2 id="client-works-title">Clientes / Obras</h2>
+          </div>
+          <button id="close-client-works" class="icon-button" type="button" aria-label="Cerrar clientes y obras">×</button>
+        </div>
+        <div id="client-work-list" class="client-work-list" aria-live="polite"></div>
+        <p id="client-works-error" class="error-message" role="alert" hidden></p>
+        <form id="client-work-form" class="client-work-form">
+          <h3>Agregar cliente u obra</h3>
+          <label class="field-label" for="client-work-name">Nombre <span>(obligatorio)</span></label>
+          <input id="client-work-name" name="name" type="text" maxlength="150" placeholder="Ej. Ecogas o Edificio Cofico II" required />
+          <label class="field-label" for="client-work-description">Descripción o ubicación <span>(opcional)</span></label>
+          <textarea id="client-work-description" name="description" maxlength="500" rows="2" placeholder="Dirección o detalle breve"></textarea>
+          <div class="dialog-actions">
+            <button id="cancel-client-works" class="secondary-button" type="button">Cerrar</button>
+            <button id="save-client-work" class="primary-button" type="submit">Agregar</button>
+          </div>
+        </form>
+      </div>
+    </dialog>
+
     <dialog id="completion-dialog" class="task-dialog confirmation-dialog" aria-labelledby="completion-title" aria-describedby="completion-help">
       <div class="confirmation-content">
         <div class="dialog-heading">
@@ -125,6 +186,20 @@
           <button id="cancel-completion" class="secondary-button" type="button">Seguir pendiente</button>
           <button id="confirm-completion" class="primary-button" type="button">Sí, completar</button>
         </div>
+      </div>
+    </dialog>
+
+    <dialog id="notifications-dialog" class="task-dialog notifications-dialog" aria-labelledby="notifications-title">
+      <div class="notifications-content">
+        <div class="dialog-heading">
+          <div>
+            <p class="eyebrow">TU ACTIVIDAD</p>
+            <h2 id="notifications-title">Notificaciones</h2>
+          </div>
+          <button id="close-notifications" class="icon-button" type="button" aria-label="Cerrar notificaciones">×</button>
+        </div>
+        <p id="notifications-error" class="error-message" role="alert" hidden></p>
+        <div id="notification-list" class="notification-list" aria-live="polite"></div>
       </div>
     </dialog>
 

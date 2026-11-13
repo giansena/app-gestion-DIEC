@@ -31,9 +31,9 @@ Abrí `http://localhost:3000`. Las tareas se guardan en `flow/data/tasks.json`, 
 
 ## Azure SQL
 
-1. Crea la tabla ejecutando [`schema.sql`](./schema.sql) en la base Azure SQL.
+1. Ejecuta [`schema.sql`](./schema.sql) en la base Azure SQL. El script crea `dbo.Clientes_Obras`, `dbo.Tareas` (incluida la clave foránea opcional del cliente/obra, el autor y los tres estados) y `dbo.Notificaciones`, y copia a `dbo.Tareas` las filas históricas de `dbo.CompletedTasks`, si existe.
 2. Copia `.env.example` a `.env` y sustituye los placeholders `AZURE_SQL_SERVER`, `AZURE_SQL_DATABASE`, `AZURE_SQL_USER` y `AZURE_SQL_PASSWORD` por credenciales reales. No publiques `.env`.
-3. La acción visible **Completar** pide confirmación antes de marcar la tarea como terminada. Luego, el servidor conserva el cambio local e intenta registrarlo en `dbo.CompletedTasks`. Si Azure no está disponible, el cliente informa que la sincronización está pendiente y el servidor reintenta cada cinco minutos.
+3. Los clientes/obras, las tareas y las notificaciones se conservan localmente en archivos JSON. Al crear una tarea, el servidor genera un aviso para cada destinatario; al editarla, avisa solo a quienes se agregaron. Las tareas y los avisos se sincronizan con Azure SQL; si Azure no está disponible, conserva los cambios pendientes y reintenta cada cinco minutos.
 
 La autenticación por selección de usuario es **simulada** y sirve únicamente para una demostración controlada. Antes de publicar la app, reemplázala por autenticación real (por ejemplo, Microsoft Entra ID), valida permisos en el servidor y usa almacenamiento compartido y persistente para despliegues con varias instancias.
 
@@ -45,5 +45,9 @@ El servidor agrupa cada día a las 08:00 las tareas abiertas por destinatario y 
 
 - Diseño responsive con controles táctiles de al menos 48 px, áreas seguras de pantalla y transiciones que respetan `prefers-reduced-motion`.
 - La sesión simulada persiste en `localStorage` hasta cerrar sesión; las tareas y credenciales no se almacenan en el navegador.
-- La vista personal es la inicial; “Todas” muestra las tareas de todo el equipo. Las pestañas separan pendientes y completadas; las completadas indican quién y cuándo las terminó.
-- Completar una tarea pide confirmación, la retira inmediatamente del tablero y sincroniza con el servidor en segundo plano.
+- La vista personal es la inicial; “Todas” muestra las tareas de todo el equipo. “Activas” presenta dos secciones independientes (“Pendientes” y “En proceso”), con su cantidad y distintivo visual; el acceso al historial de completadas está al pie del tablero.
+- El tablero permite administrar clientes/obras y asociarlos opcionalmente a nuevas tareas. Los cambios de estado piden confirmación; una tarea completada puede reabrirse como pendiente desde “Completadas”.
+- Las tareas activas pueden editarse para ajustar descripción, destinatarios, cliente/obra y vencimiento; la fecha y el autor originales se conservan. Los nuevos destinatarios reciben una notificación en la bandeja.
+- Las tareas y los clientes/obras se pueden eliminar con confirmación. Para evitar asociaciones rotas, primero hay que eliminar las tareas vinculadas a un cliente/obra.
+- La bandeja de notificaciones es personal para el usuario seleccionado, muestra quién asignó cada tarea y se actualiza periódicamente mientras la app está abierta.
+- Los recordatorios de las 08:00 incluyen tanto tareas pendientes como tareas en proceso.
